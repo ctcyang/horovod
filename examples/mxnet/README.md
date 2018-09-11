@@ -32,7 +32,7 @@ Note the use of MXNET_USE_OPERATOR_TUNING=0 flag to disable OpenMP tuning. If th
 
 To run on Imagenet data:
 
-```mpirun -np 8 --hostfile ~/host_file --bind-to none --map-by slot -x NCCL_DEBUG=INFO -x NCCL_MIN_NRINGS=4 -x LD_LIBRARY_PATH -x PATH -x MXNET_USE_OPERATOR_TUNING=0 -mca pml ob1 -mca btl ^openib python mxnet_imagenet_resnet50.py --batch-size 128 --network resnet-v1 --num-layers 50 --num-epochs 1 --kv-store horovod --dtype float32 --gpus 0 --data-nthreads 5```
+```mpirun -np 8 --hostfile ~/host_file --bind-to none --map-by slot -x NCCL_DEBUG=INFO -x NCCL_MIN_NRINGS=4 -x LD_LIBRARY_PATH -x PATH -x MXNET_USE_OPERATOR_TUNING=0 -mca pml ob1 -mca btl ^openib python mxnet_imagenet_resnet50.py --batch-size 128 --network resnet-v1 --num-layers 50 --num-epochs 1 --kv-store horovod --dtype float32 --gpus 0 --data-nthreads 4```
 
 # Testing
 The following Horovod unit tests do not pass:
