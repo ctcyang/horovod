@@ -11,7 +11,7 @@
 
 # Building
 1) git clone --recursive https://github.com/ctcyang/incubator-mxnet.git -b horovod
-2) Verify that horovod is on branch: fp16_divide_before_sum
+2) Verify that horovod is on branch: mxnet_fp16_divide_before_sum
 3) cd horovod & cp make/config.mk .
 4) Only config.mk + Makefile build chain works. We have not added CMakeLists support yet. Make following changes to config.mk. Note: these are *in addition* to the standard `USE_CUDA = 1` and `USE_CUDA_PATH = [cuda directory]` additions to config.mk when building MXNet for GPU:
   ```
