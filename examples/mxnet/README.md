@@ -16,10 +16,18 @@
   ```
   USE_NCCL = 1
   USE_NCCL_PATH = [directory in which libnccl.so resides]
-  USE_MPI_PATH = [root directory in which MPI folders /lib and /include reside]
   ```
 4) make -j16
 5) pip install -e python
+6) mkdir python/mxnet/include
+7) Enter the following commands ```
+cp -r ~/mxnet/3rdparty/mshadow/mshadow ~/mxnet/python/mxnet/include
+cp -r ~/mxnet/3rdparty/dlpack/include/dlpack ~/mxnet/python/mxnet/include
+cp -r ~/mxnet/3rdparty/dmlc-core/include/dmlc ~/mxnet/python/mxnet/include
+cp -r ~/mxnet/3rdparty/tvm/include/tvm ~/mxnet/python/mxnet/include
+cp -r ~/mxnet/3rdparty/tvm/nnvm/include/nnvm ~/mxnet/python/mxnet/include
+cp -r ~/mxnet/include/mxnet ~/mxnet/python/mxnet/include
+```
 
 # Building Horovod
 1) git clone https://github.com/ctcyang/horovod.git -b mxnet_feature horovod
