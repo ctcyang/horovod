@@ -122,10 +122,10 @@ int TensorUtil::GetDevice(NDArray* tensor) {
 // Otherwise construct on GPU
 NDArray* TensorUtil::New(int device) {
   if (device == CPU_DEVICE_ID) {
-    NDArray* my_array = new NDArray(TShape(), Context::CPU(0));
+    NDArray* my_array = new NDArray(TShape(), Context::CPU(0), false, dtype);
     return my_array;
   } else {
-    NDArray* my_array = new NDArray(TShape(), Context::GPU(device));
+    NDArray* my_array = new NDArray(TShape(), Context::GPU(device), false, dtype);
     return my_array;
   }
 }
@@ -147,6 +147,8 @@ void TensorUtil::ResizeNd(NDArray* tensor, int nDimension,
 // Copy from tensor to output
 // TODO(ctcyang): Is priority 0 okay?
 void TensorUtil::Copy(NDArray* output, NDArray* tensor) {
+  if (tensor->shape() != output->shape())
+    output->ReshapeAndAlloc(tensor->shape());
   CopyFromTo(*tensor, output, 0);
 }
 

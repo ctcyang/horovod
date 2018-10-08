@@ -77,7 +77,7 @@ int DoAllreduceCudaOnCPU(NDArray* tensor, NDArray* output, int average,
 
   // Make async copy of input tensor to CPU tensor and record completion event.
   auto hvd_cpu_buffer =
-      std::make_shared<MXTemporaryBuffer<NDArray>>(CPU_DEVICE_ID);
+      std::make_shared<MXTemporaryBuffer<NDArray>>(CPU_DEVICE_ID, tensor->dtype());
   TensorUtil::AsyncCopyCudaToCPU(tensor, hvd_cpu_buffer->tensor());
   auto ready_event = std::make_shared<MXReadyEvent<NDArray>>(tensor);
 
@@ -128,12 +128,12 @@ int DoAllgatherCudaOnCPU(NDArray* tensor, NDArray* output, char* name,
 
   // Make async copy of input tensor to CPU tensor and record completion event.
   auto hvd_cpu_tensor =
-      std::make_shared<MXTemporaryBuffer<NDArray>>(CPU_DEVICE_ID);
+      std::make_shared<MXTemporaryBuffer<NDArray>>(CPU_DEVICE_ID, tensor->dtype());
   TensorUtil::AsyncCopyCudaToCPU(tensor, hvd_cpu_tensor->tensor());
   auto ready_event = std::make_shared<MXReadyEvent<NDArray>>(tensor);
 
   auto hvd_cpu_output =
-      std::make_shared<MXTemporaryBuffer<NDArray>>(CPU_DEVICE_ID);
+      std::make_shared<MXTemporaryBuffer<NDArray>>(CPU_DEVICE_ID, tensor->dtype());
   auto hvd_context = std::make_shared<MXOpContext<NDArray>>(
       CPU_DEVICE_ID, hvd_cpu_output->tensor());
 
@@ -188,7 +188,7 @@ int DoBroadcastCudaOnCPU(NDArray* tensor, NDArray* output, int root_rank,
 
   // Make async copy of input tensor to CPU tensor and record completion event.
   auto hvd_cpu_buffer =
-      std::make_shared<MXTemporaryBuffer<NDArray>>(CPU_DEVICE_ID);
+      std::make_shared<MXTemporaryBuffer<NDArray>>(CPU_DEVICE_ID, tensor->dtype());
   TensorUtil::AsyncCopyCudaToCPU(tensor, hvd_cpu_buffer->tensor());
   auto ready_event = std::make_shared<MXReadyEvent<NDArray>>(tensor);
 
@@ -215,42 +215,44 @@ int DoBroadcastCudaOnCPU(NDArray* tensor, NDArray* output, int root_rank,
 extern "C" int horovod_mxnet_allreduce_async(
     NDArray* tensor, NDArray* output, int average, char* name, Callback cb) {
   if (tensor->ctx().dev_mask() == gpu::kDevMask &&
-      output->ctx().dev_mask() == gpu::kDevMask) {
+      output->ctx().dev_mask() == gpu::kDevMask)
     return DoAllreduce(tensor, output, average, name, cb);
-  } else {
-    #if HAVE_CUDA
-      return DoAllreduceCudaOnCPU(tensor, output, average, name, cb);
-    #else
-      return DoAllreduce(tensor, output, average, name, cb);
-    #endif
-  }
+  else
+#if HAVE_CUDA
+    return DoAllreduceCudaOnCPU(tensor, output, average, name, cb);
+#else
+    return DoAllreduce(tensor, output, average, name, cb);
+#endif
 }
 
 extern "C" int horovod_mxnet_allgather_async(
     NDArray* tensor, NDArray* output, char* name, Callback cb) {
+#if HOROVOD_GPU_ALLGATHER == 'M'
   if (tensor->ctx().dev_mask() == gpu::kDevMask &&
       output->ctx().dev_mask() == gpu::kDevMask)
     return DoAllgather(tensor, output, name, cb);
   else
-    #if HAVE_CUDA
-      return DoAllgatherCudaOnCPU(tensor, output, name, cb);
-    #else
-      return DoAllgather(tensor, output, name, cb);
-    #endif
+#endif
+#if HAVE_CUDA
+    return DoAllgatherCudaOnCPU(tensor, output, name, cb);
+#else
+    return DoAllgather(tensor, output, name, cb);
+#endif
 }
 
 extern "C" int horovod_mxnet_broadcast_async(
     NDArray* tensor, NDArray* output, int root_rank, char* name, Callback cb) {
-   
+#if HOROVOD_GPU_ALLGATHER == 'M'   
   if (tensor->ctx().dev_mask() == gpu::kDevMask &&
       output->ctx().dev_mask() == gpu::kDevMask)
     return DoBroadcast(tensor, output, root_rank, name, cb);
   else
-    #if HAVE_CUDA
-      return DoBroadcastCudaOnCPU(tensor, output, root_rank, name, cb);
-    #else
-      return DoBroadcast(tensor, output, root_rank, name, cb);
-    #endif
+#endif
+#if HAVE_CUDA
+    return DoBroadcastCudaOnCPU(tensor, output, root_rank, name, cb);
+#else
+    return DoBroadcast(tensor, output, root_rank, name, cb);
+#endif
 }
 
 extern "C" int horovod_mxnet_poll(int handle) {
