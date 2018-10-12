@@ -120,7 +120,7 @@ int TensorUtil::GetDevice(NDArray* tensor) {
 // Returns pointer to newly created NDArray
 // If dev_id equal to CPU_DEVICE_ID, construct Tensor on CPU
 // Otherwise construct on GPU
-NDArray* TensorUtil::New(int device) {
+NDArray* TensorUtil::New(int device, int dtype) {
   if (device == CPU_DEVICE_ID) {
     NDArray* my_array = new NDArray(TShape(), Context::CPU(0), false, dtype);
     return my_array;
