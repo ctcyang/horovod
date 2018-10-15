@@ -152,25 +152,16 @@ int DoAllgatherCudaOnCPU(NDArray* tensor, NDArray* output, char* name,
 }
 #endif
 
-int DoBroadcast(NDArray* tensor, NDArray* output, int root_rank, char* name, 
-                Callback cb) {
+int DoBroadcast(NDArray* tensor, int root_rank, char* name, Callback cb) {
   ThrowIfError(common::CheckInitialized());
 
   auto device = TensorUtil::GetDevice(tensor);
   auto hvd_tensor = std::make_shared<MXTensor<NDArray>>(tensor);
-  auto hvd_context = std::make_shared<MXOpContext<NDArray>>(device, output);
-  std::shared_ptr<Tensor> hvd_output = nullptr;
-  if (horovod_rank() == root_rank) {
-    if (tensor != output) {
-      TensorUtil::Copy(output, tensor);
-    }
-  } else {
-    hvd_output = std::make_shared<MXTensor<NDArray>>(output);
-  }
+  auto hvd_context = std::make_shared<MXOpContext<NDArray>>(device, tensor);
 
   auto handle = handle_manager.AllocateHandle(cb);
   auto enqueue_result =
-      EnqueueTensorBroadcast(hvd_context, hvd_tensor, hvd_output, root_rank,
+      EnqueueTensorBroadcast(hvd_context, hvd_tensor, hvd_tensor, root_rank,
                              nullptr, GetOpName("broadcast", name, handle),
                              device, [handle](const Status& status) {
                                handle_manager.MarkDone(handle, status);
@@ -182,8 +173,7 @@ int DoBroadcast(NDArray* tensor, NDArray* output, int root_rank, char* name,
 }
 
 #if HAVE_CUDA
-int DoBroadcastCudaOnCPU(NDArray* tensor, NDArray* output, int root_rank, 
-                         char* name, Callback cb) {
+int DoBroadcastCudaOnCPU(NDArray* tensor, int root_rank, char* name, Callback cb) {
   ThrowIfError(common::CheckInitialized());
 
   // Make async copy of input tensor to CPU tensor and record completion event.
@@ -199,8 +189,7 @@ int DoBroadcastCudaOnCPU(NDArray* tensor, NDArray* output, int root_rank,
   auto enqueue_result = EnqueueTensorBroadcast(
       hvd_context, hvd_cpu_buffer, hvd_cpu_buffer, root_rank, ready_event,
       GetOpName("broadcast", name, handle), CPU_DEVICE_ID,
-      [handle, hvd_cpu_buffer, output](const Status& status) {
-        TensorUtil::CopyCPUToCuda(hvd_cpu_buffer->tensor(), output);
+      [handle, hvd_cpu_buffer](const Status& status) {
         handle_manager.MarkDone(handle, status);
         handle_manager.ExecuteCallback(handle);
       });
@@ -241,18 +230,10 @@ extern "C" int horovod_mxnet_allgather_async(
 }
 
 extern "C" int horovod_mxnet_broadcast_async(
-    NDArray* tensor, NDArray* output, int root_rank, char* name, Callback cb) {
-#if HOROVOD_GPU_ALLGATHER == 'M'   
-  if (tensor->ctx().dev_mask() == gpu::kDevMask &&
-      output->ctx().dev_mask() == gpu::kDevMask)
-    return DoBroadcast(tensor, output, root_rank, name, cb);
-  else
-#endif
-#if HAVE_CUDA
-    return DoBroadcastCudaOnCPU(tensor, output, root_rank, name, cb);
-#else
-    return DoBroadcast(tensor, output, root_rank, name, cb);
-#endif
+    NDArray* tensor, int root_rank, char* name, Callback cb) {
+    // We are now doing the GPU to CPU copy in the MXNet side. We can
+    // call DoBroadcast for all cases.
+    return DoBroadcast(tensor, root_rank, name, cb);
 }
 
 extern "C" int horovod_mxnet_poll(int handle) {

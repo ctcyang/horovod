@@ -32,7 +32,7 @@ extern "C" int horovod_mxnet_allreduce_async(
 extern "C" int horovod_mxnet_allgather_async(
     NDArray* tensor, NDArray* output, char* name, Callback cb);
 extern "C" int horovod_mxnet_broadcast_async(
-    NDArray* tensor, NDArray* output, int root_rank, char* name, Callback cb);
+    NDArray* tensor, int root_rank, char* name, Callback cb);
 extern "C" int horovod_mxnet_poll(int handle);
 extern "C" void horovod_mxnet_wait_and_clear(int handle);
 
