@@ -514,7 +514,12 @@ def get_common_options(build_ext):
         LIBRARIES += ['ddl', 'ddl_pack']
 
     if mxnet_include_dirs:
-        MACROS += [('MSHADOW_USE_CBLAS', '1')]
+        #MACROS += [('MSHADOW_USE_CBLAS', '1')]
+        if have_cuda:
+            MACROS += [('MSHADOW_USE_CUDA', '1')]
+        else:
+            MACROS += [('MSHADOW_USE_CUDA', '0')] 
+        MACROS += [('MSHADOW_USE_MKL', '0')]
         INCLUDES += ['%s' % mxnet_include_dirs]
 
     if gpu_allreduce:
