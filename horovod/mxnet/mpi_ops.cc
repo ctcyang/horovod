@@ -192,8 +192,6 @@ int DoBroadcastCudaOnCPU(std::shared_ptr<MXTemporaryBuffer<NDArray>>& hvd_cpu_bu
 }
 #endif
 
-// Do AllReduce on GPU only if src and dst are on GPU
-// Otherwise do AllReduce on CPU
 extern "C" int horovod_mxnet_allreduce_async(
     NDArray* input, NDArray* output, int average, char* name) {
 
