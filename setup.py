@@ -69,10 +69,10 @@ def check_tf_version():
 def check_mx_version():
     try:
         import mxnet as mx
-        if mx.__version__ < '1.3.0':
+        if mx.__version__ < '1.4.0':
             raise DistutilsPlatformError(
                 'Your MXNet version %s is outdated.  '
-                'Horovod requires mxnet>=1.3.0' % mx.__version__)
+                'Horovod requires mxnet>=1.4.0' % mx.__version__)
     except ImportError:
         raise DistutilsPlatformError(
             'import mxnet failed, is it installed?\n\n%s' % traceback.format_exc())
