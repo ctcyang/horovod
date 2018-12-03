@@ -237,6 +237,11 @@ def get_tf_flags(build_ext, cpp_flags):
         return compile_flags, link_flags
 
 
+def get_mx_include_dirs():
+    import mxnet as mx
+    return mx.libinfo.find_include_path()
+
+
 def get_mx_lib_dirs():
     import mxnet as mx
     mx_libs = mx.libinfo.find_lib_path()
@@ -437,7 +442,7 @@ def get_common_options(build_ext):
     cpp_flags = get_cpp_flags(build_ext)
     link_flags = get_link_flags(build_ext)
     mpi_flags = get_mpi_flags()
-    mxnet_include_dirs = os.environ.get('INCLUDES')
+    mxnet_include_dirs = get_mx_include_dirs()
 
     gpu_allreduce = os.environ.get('HOROVOD_GPU_ALLREDUCE')
     if gpu_allreduce and gpu_allreduce != 'MPI' and gpu_allreduce != 'NCCL' and \
@@ -848,10 +853,10 @@ class custom_build_ext(build_ext):
 setup(name='horovod',
       version=__version__,
       packages=find_packages(),
-      description='Distributed training framework for TensorFlow, Keras, and PyTorch.',
+      description='Distributed training framework for TensorFlow, Keras, PyTorch, and MXNet.',
       author='Uber Technologies, Inc.',
       long_description=textwrap.dedent('''\
-          Horovod is a distributed training framework for TensorFlow, Keras, and PyTorch.
+          Horovod is a distributed training framework for TensorFlow, Keras, PyTorch, and MXNet.
           The goal of Horovod is to make distributed Deep Learning fast and easy to use.'''),
       url='https://github.com/uber/horovod',
       classifiers=[
