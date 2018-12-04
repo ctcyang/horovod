@@ -30,6 +30,9 @@ class MXTests(unittest.TestCase):
     Tests for ops in horovod.mxnet.
     """
 
+    def _is_test_for_gpu(self):
+        return mx.current_context().device_type == 'gpu'
+
     def test_horovod_allreduce(self):
         """Test that the allreduce correctly sums 1D, 2D, 3D tensors."""
         hvd.init()
@@ -37,7 +40,10 @@ class MXTests(unittest.TestCase):
         dtypes = ['int32',   'int64',
                   'float32', 'float64']
         dims = [1, 2, 3]
-        dev = mx.gpu(hvd.local_rank())
+        if self._is_test_for_gpu():
+            dev = mx.gpu(hvd.local_rank())
+        else:
+            dev = mx.current_context()
         count = 0
         shapes = [(), (17), (17, 17), (17, 17, 17)]
         for dtype, dim in itertools.product(dtypes, dims):
@@ -77,7 +83,10 @@ class MXTests(unittest.TestCase):
         dtypes = ['int32',   'int64',
                   'float32', 'float64']
         dims = [1, 2, 3]
-        dev = mx.gpu(hvd.local_rank())
+        if self._is_test_for_gpu():
+            dev = mx.gpu(hvd.local_rank())
+        else:
+            dev = mx.current_context()
         count = 0
         shapes = [(), (17), (17, 17), (17, 17, 17)]
         for dtype, dim in itertools.product(dtypes, dims):
@@ -115,7 +124,10 @@ class MXTests(unittest.TestCase):
         dtypes = ['int32',   'int64',
                   'float32', 'float64'] 
         dims = [1, 2, 3]
-        dev = mx.gpu(hvd.local_rank())
+        if self._is_test_for_gpu():
+            dev = mx.gpu(hvd.local_rank())
+        else:
+            dev = mx.current_context()
         count = 0
         shapes = [(), (17), (17, 17), (17, 17, 17)]
         for dtype, dim in itertools.product(dtypes, dims):
@@ -159,7 +171,10 @@ class MXTests(unittest.TestCase):
         hvd.init()
         rank = hvd.rank()
         size = hvd.size()
-        dev = mx.gpu(hvd.local_rank())
+        if self._is_test_for_gpu():
+            dev = mx.gpu(hvd.local_rank())
+        else:
+            dev = mx.current_context()
 
         # This test does not apply if there is only one worker.
         if size == 1:
@@ -182,7 +197,10 @@ class MXTests(unittest.TestCase):
         hvd.init()
         rank = hvd.rank()
         size = hvd.size()
-        dev = mx.gpu(hvd.local_rank())
+        if self._is_test_for_gpu():
+            dev = mx.gpu(hvd.local_rank())
+        else:
+            dev = mx.current_context()
 
         # This test does not apply if there is only one worker.
         if size == 1:
@@ -208,7 +226,10 @@ class MXTests(unittest.TestCase):
         hvd.init()
         rank = hvd.rank()
         size = hvd.size()
-        dev = mx.gpu(hvd.local_rank())
+        if self._is_test_for_gpu():
+            dev = mx.gpu(hvd.local_rank())
+        else:
+            dev = mx.current_context()
 
         # This test does not apply if there is only one worker.
         if size == 1:
@@ -233,7 +254,10 @@ class MXTests(unittest.TestCase):
         hvd.init()
         rank = hvd.rank()
         size = hvd.size()
-        dev = mx.gpu(hvd.local_rank())
+        if self._is_test_for_gpu():
+            dev = mx.gpu(hvd.local_rank())
+        else:
+            dev = mx.current_context()
 
         # This test does not apply if there is only one worker.
         if size == 1:
@@ -252,128 +276,6 @@ class MXTests(unittest.TestCase):
         except Exception as e:
             print(e)
 
-    # Currently, MXNet doesn't track gradient of hvd.allreduce op
-    #def test_horovod_allreduce_grad(self):
-
-    # Currently, MXNet doesn't track gradient of hvd.allreduce op
-    #def test_horovod_allreduce_grad_average(self):
-
-    @unittest.skip("")
-    def test_horovod_allgather(self):
-        """Test that the allgather correctly gathers 1D, 2D, 3D tensors."""
-        hvd.init()
-        rank = hvd.rank()
-        size = hvd.size()
-
-        dtypes = [torch.ByteTensor, torch.CharTensor, torch.ShortTensor,
-                  torch.IntTensor, torch.LongTensor, torch.FloatTensor, torch.DoubleTensor]
-        if torch.cuda.is_available():
-            dtypes += [torch.cuda.ByteTensor, torch.cuda.CharTensor, torch.cuda.ShortTensor,
-                       torch.cuda.IntTensor, torch.cuda.LongTensor, torch.cuda.FloatTensor,
-                       torch.cuda.DoubleTensor]
-        dims = [1, 2, 3]
-        for dtype, dim in itertools.product(dtypes, dims):
-            tensor = torch.FloatTensor(*([17] * dim)).fill_(1).mul_(rank)
-            tensor = tensor.type(dtype)
-            gathered = hvd.allgather(tensor)
-
-            assert list(gathered.shape) == [17 * size] + [17] * (dim - 1)
-
-            for i in range(size):
-                rank_tensor = gathered[i * 17:(i + 1) * 17]
-                assert list(rank_tensor.shape) == [17] * dim, \
-                    'hvd.allgather produces incorrect gathered shape'
-                assert rank_tensor.data.min() == i, 'hvd.allgather produces incorrect gathered tensor'
-                assert rank_tensor.data.max() == i, 'hvd.allgather produces incorrect gathered tensor'
-
-    @unittest.skip("")
-    def test_horovod_allgather_variable_size(self):
-        """Test that the allgather correctly gathers 1D, 2D, 3D tensors,
-        even if those tensors have different sizes along the first dim."""
-        hvd.init()
-        rank = hvd.rank()
-        size = hvd.size()
-
-        dtypes = [torch.ByteTensor, torch.CharTensor, torch.ShortTensor,
-                  torch.IntTensor, torch.LongTensor, torch.FloatTensor, torch.DoubleTensor]
-        if torch.cuda.is_available():
-            dtypes += [torch.cuda.ByteTensor, torch.cuda.CharTensor, torch.cuda.ShortTensor,
-                       torch.cuda.IntTensor, torch.cuda.LongTensor, torch.cuda.FloatTensor,
-                       torch.cuda.DoubleTensor]
-        dims = [1, 2, 3]
-        for dtype, dim in itertools.product(dtypes, dims):
-            # Support tests up to MPI Size of 35
-            if size > 35:
-                break
-
-            tensor_sizes = [17, 32, 81, 12, 15, 23, 22] * 5
-            tensor_sizes = tensor_sizes[:size]
-
-            tensor = torch.FloatTensor(
-                *([tensor_sizes[rank]] + [17] * (dim - 1))).fill_(1).mul_(rank)
-            tensor = tensor.type(dtype)
-            gathered = hvd.allgather(tensor)
-
-            expected_size = sum(tensor_sizes)
-            assert list(gathered.shape) == [expected_size] + [17] * (dim - 1)
-
-            for i in range(size):
-                rank_size = [tensor_sizes[i]] + [17] * (dim - 1)
-                rank_tensor = gathered[sum(
-                    tensor_sizes[:i]):sum(tensor_sizes[:i + 1])]
-                assert list(rank_tensor.shape) == rank_size
-                assert rank_tensor.data.min() == i
-                assert rank_tensor.data.max() == i
-
-    @unittest.skip("")
-    def test_horovod_allgather_error(self):
-        """Test that the allgather returns an error if any dimension besides
-        the first is different among the tensors being gathered."""
-        hvd.init()
-        rank = hvd.rank()
-        size = hvd.size()
-
-        # This test does not apply if there is only one worker.
-        if size == 1:
-            return
-
-        tensor_size = [17] * 3
-        tensor_size[1] = 10 * (rank + 1)
-        tensor = torch.FloatTensor(*tensor_size).fill_(1).mul_(rank)
-
-        try:
-            hvd.allgather(tensor)
-            assert False, 'hvd.allgather did not throw error'
-        except torch.FatalError:
-            pass
-
-    @unittest.skip("")
-    def test_horovod_allgather_type_error(self):
-        """Test that the allgather returns an error if the types being gathered
-        differ among the processes"""
-        hvd.init()
-        rank = hvd.rank()
-        size = hvd.size()
-
-        # This test does not apply if there is only one worker.
-        if size == 1:
-            return
-
-        tensor_size = [17] * 3
-        if rank % 2 == 0:
-            tensor = torch.IntTensor(*tensor_size)
-        else:
-            tensor = torch.FloatTensor(*tensor_size)
-
-        try:
-            hvd.allgather(tensor)
-            assert False, 'hvd.allgather did not throw error'
-        except torch.FatalError:
-            pass
-
-    # MXNet doesn't track gradient of hvd.allgather
-    #def test_horovod_allgather_grad(self):
-        """Test the correctness of the allgather gradient."""
 
     def test_horovod_broadcast(self):
         """Test that the broadcast correctly broadcasts 1D, 2D, 3D tensors."""
@@ -388,7 +290,10 @@ class MXTests(unittest.TestCase):
         dtypes = ['int32',   'int64',
                   'float32', 'float64'] 
         dims = [1, 2, 3]
-        dev = mx.gpu(hvd.local_rank())
+        if self._is_test_for_gpu():
+            dev = mx.gpu(hvd.local_rank())
+        else:
+            dev = mx.current_context()
         count = 0
         shapes = [(), (17), (17, 17), (17, 17, 17)]
         root_ranks = list(range(size))
@@ -432,7 +337,10 @@ class MXTests(unittest.TestCase):
         dtypes = ['int32',   'int64',
                   'float32', 'float64'] 
         dims = [1, 2, 3]
-        dev = mx.gpu(hvd.local_rank())
+        if self._is_test_for_gpu():
+            dev = mx.gpu(hvd.local_rank())
+        else:
+            dev = mx.current_context()
         count = 0
         shapes = [(), (17), (17, 17), (17, 17, 17)]
         root_ranks = list(range(size))
@@ -491,7 +399,10 @@ class MXTests(unittest.TestCase):
         hvd.init()
         rank = hvd.rank()
         size = hvd.size()
-        dev = mx.gpu(hvd.local_rank())
+        if self._is_test_for_gpu():
+            dev = mx.gpu(hvd.local_rank())
+        else:
+            dev = mx.current_context()
 
         # This test does not apply if there is only one worker.
         if size == 1:
@@ -515,7 +426,10 @@ class MXTests(unittest.TestCase):
         hvd.init()
         rank = hvd.rank()
         size = hvd.size()
-        dev = mx.gpu(hvd.local_rank())
+        if self._is_test_for_gpu():
+            dev = mx.gpu(hvd.local_rank())
+        else:
+            dev = mx.current_context()
 
         # This test does not apply if there is only one worker.
         if size == 1:
@@ -542,7 +456,10 @@ class MXTests(unittest.TestCase):
         dtypes = ['int32',   'int64',
                   'float32', 'float64'] 
         dims = [1, 2, 3]
-        dev = mx.gpu(hvd.local_rank())
+        if self._is_test_for_gpu():
+            dev = mx.gpu(hvd.local_rank())
+        else:
+            dev = mx.current_context()
         count = 0
         shapes = [(), (17), (17, 17), (17, 17, 17)]
         root_rank = 1
