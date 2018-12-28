@@ -26,8 +26,7 @@ namespace mxnet {
 using namespace horovod::common;
 
 extern "C" int horovod_mxnet_allreduce_async(NDArray* tensor, NDArray* output,
-                                             char* name, bool average,
-                                             int batch_size);
+                                             char* name, bool average);
 extern "C" int horovod_mxnet_allgather_async(NDArray* tensor, NDArray* output,
                                              char* name);
 extern "C" int horovod_mxnet_broadcast_async(NDArray* tensor, NDArray* output,

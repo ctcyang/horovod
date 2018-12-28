@@ -203,8 +203,7 @@ int DoBroadcastCudaOnCPU(
 #endif
 
 extern "C" int horovod_mxnet_allreduce_async(NDArray* input, NDArray* output,
-                                             char* name,
-                                             bool average, int batch_size) {
+                                             char* name, bool average) {
 
   std::string new_name = GetOpName("allreduce", name);
   auto allreduce_async_fn = [input, output,
@@ -247,7 +246,7 @@ extern "C" int horovod_mxnet_allreduce_async(NDArray* input, NDArray* output,
 #endif
 
   if (average) {
-    *output /= batch_size;
+    *output /= horovod_size();
   }
   return 0;
 }
