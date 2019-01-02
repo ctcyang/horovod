@@ -29,8 +29,8 @@ parser.add_argument('--dtype', type=str, default='float32',
                     help='training data type (default: float32)')
 parser.add_argument('--gpus', type=str, default='0',
                     help='number of gpus to use (default: 0)')
-parser.add_argument('--epochs', type=int, default=10,
-                    help='number of training epochs (default: 10)')
+parser.add_argument('--epochs', type=int, default=5,
+                    help='number of training epochs (default: 5)')
 parser.add_argument('--lr', type=float, default=0.01,
                     help='learning rate (default: 0.01)')
 parser.add_argument('--momentum', type=float, default=0.5,
@@ -101,5 +101,5 @@ test_iter = mx.io.NDArrayIter(mnist['test_data'], mnist['test_label'],
 acc = mx.metric.Accuracy()
 mlp_model.score(test_iter, acc)
 print(acc)
-assert acc.get()[1] > 0.95, "Achieved accuracy (%f) is lower than expected \
-                            (0.95)" % acc.get()[1]
+assert acc.get()[1] > 0.94, "Achieved accuracy (%f) is lower than expected \
+                            (0.94)" % acc.get()[1]
