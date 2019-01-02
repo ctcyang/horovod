@@ -1,18 +1,3 @@
-# Copyright 2017 Uber Technologies, Inc. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
-
 # Step 1: import required packages
 import argparse
 import logging
@@ -29,8 +14,8 @@ parser.add_argument('--dtype', type=str, default='float32',
                     help='training data type (default: float32)')
 parser.add_argument('--gpus', type=str, default='0',
                     help='number of gpus to use (default: 0)')
-parser.add_argument('--epochs', type=int, default=5,
-                    help='number of training epochs (default: 5)')
+parser.add_argument('--epochs', type=int, default=10,
+                    help='number of training epochs (default: 10)')
 parser.add_argument('--lr', type=float, default=0.01,
                     help='learning rate (default: 0.01)')
 parser.add_argument('--momentum', type=float, default=0.5,
@@ -87,6 +72,21 @@ optimizer_params = {'learning_rate': 0.01}
 opt = mx.optimizer.create('sgd', sym=net, **optimizer_params)
 opt = hvd.DistributedOptimizer(opt)
 
+initializer = mx.init.Xavier(rnd_type='gaussian', factor_type="in",
+                             magnitude=2)
+mlp_model.bind(data_shapes=train_iter.provide_data,
+               label_shapes=train_iter.provide_label)
+mlp_model.init_params(initializer)
+
+# Fetch and broadcast parameters
+(arg_params, aux_params) = mlp_model.get_params()
+mx.nd.waitall()
+if arg_params is not None:
+    hvd.broadcast_parameters(arg_params, root_rank=0)
+if aux_params is not None:
+    hvd.broadcast_parameters(aux_params, root_rank=0)
+mlp_model.set_params(arg_params=arg_params, aux_params=aux_params)
+
 mlp_model.fit(train_iter,  # train data
               eval_data=val_iter,  # validation data
               optimizer=opt,  # use SGD to train
@@ -101,5 +101,5 @@ test_iter = mx.io.NDArrayIter(mnist['test_data'], mnist['test_label'],
 acc = mx.metric.Accuracy()
 mlp_model.score(test_iter, acc)
 print(acc)
-assert acc.get()[1] > 0.94, "Achieved accuracy (%f) is lower than expected \
-                            (0.94)" % acc.get()[1]
+assert acc.get()[1] > 0.96, "Achieved accuracy (%f) is lower than expected \
+                            (0.96)" % acc.get()[1]
