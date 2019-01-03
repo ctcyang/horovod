@@ -18,8 +18,8 @@
 
 #include <mxnet/base.h>
 #include <mxnet/c_api.h>
-#include <mxnet/ndarray.h>
 #include <mxnet/engine.h>
+#include <mxnet/ndarray.h>
 
 namespace horovod {
 namespace mxnet {

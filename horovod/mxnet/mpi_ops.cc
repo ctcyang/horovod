@@ -173,13 +173,13 @@ extern "C" int horovod_mxnet_allreduce_async(NDArray* input, NDArray* output,
   std::string op_name = GetOpName("allreduce", name);
   auto allreduce_async_fn = [input, output,
                              op_name](RunContext rctx,
-                                      Engine::CallbackOnComplete cb) mutable {
+                                      Callback cb) mutable {
     DoAllreduce(input, output, op_name, cb);
   };
 #if HAVE_CUDA
   auto allreduce_async_cpu_fn =
       [input, output, op_name](RunContext rctx,
-                               Engine::CallbackOnComplete cb) mutable {
+                               Callback cb) mutable {
         DoAllreduceCudaOnCPU(input, output, op_name, cb);
       };
 #endif
@@ -222,13 +222,13 @@ extern "C" int horovod_mxnet_allgather_async(NDArray* input, NDArray* output,
   std::string op_name = GetOpName("allgather", name);
   auto allgather_async_fn = [input, output,
                              op_name](RunContext rctx,
-                                      Engine::CallbackOnComplete cb) mutable {
+                                      Callback cb) mutable {
     DoAllgather(input, output, op_name, cb);
   };
 #if HAVE_CUDA
   auto allgather_async_cpu_fn =
       [input, output, op_name](RunContext rctx,
-                               Engine::CallbackOnComplete cb) mutable {
+                               Callback cb) mutable {
         DoAllgatherCudaOnCPU(input, output, op_name, cb);
       };
 #endif
@@ -266,7 +266,7 @@ extern "C" int horovod_mxnet_broadcast_async(NDArray* input, NDArray* output,
   std::string op_name = GetOpName("broadcast", name);
   auto broadcast_async_fn = [input, output, op_name,
                              root_rank](RunContext rctx,
-                                        Engine::CallbackOnComplete cb) mutable {
+                                        Callback cb) mutable {
     DoBroadcast(input, output, root_rank, op_name, cb);
   };
 
@@ -279,7 +279,7 @@ extern "C" int horovod_mxnet_broadcast_async(NDArray* input, NDArray* output,
   TensorUtil::AsyncCopyCudaToCPU(input, hvd_cpu_buffer->tensor());
   auto broadcast_async_cpu_fn =
         [hvd_cpu_buffer, op_name, root_rank]
-        (RunContext rctx, Engine::CallbackOnComplete cb) mutable {
+        (RunContext rctx, Callback cb) mutable {
           DoBroadcastCudaOnCPU(hvd_cpu_buffer, root_rank, op_name, cb);
         };
 
