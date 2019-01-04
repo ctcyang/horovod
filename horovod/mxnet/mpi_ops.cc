@@ -28,11 +28,16 @@ namespace horovod {
 namespace mxnet {
 
 namespace {
+
+std::atomic_int op_count;
+
 std::string GetOpName(std::string prefix, char* name) {
   if (name != nullptr) {
     return prefix + "." + std::string(name);
   }
-  return std::string();
+
+  op_count.fetch_add(1);
+  return prefix + ".noname." + std::to_string(op_count);
 }
 } // namespace
 
