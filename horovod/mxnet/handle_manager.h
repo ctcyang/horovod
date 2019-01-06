@@ -13,27 +13,43 @@
 // limitations under the License.
 // =============================================================================
 
-#ifndef HOROVOD_MXNET_MPI_OPS_H
-#define HOROVOD_MXNET_MPI_OPS_H
+#ifndef HOROVOD_MXNET_HANDLE_MANAGER_H
+#define HOROVOD_MXNET_HANDLE_MANAGER_H
 
-#include <mxnet/base.h>
-#include <mxnet/c_api.h>
-#include <mxnet/ndarray.h>
+#include <atomic>
+#include <memory>
+#include <mutex>
+#include <unordered_map>
+
+#include "../common/common.h"
+
+#include <mxnet/engine.h>
 
 namespace horovod {
 namespace mxnet {
 
 using namespace horovod::common;
 
-extern "C" int horovod_mxnet_allreduce_async(NDArray* tensor, NDArray* output,
-                                             char* name, bool average);
-extern "C" int horovod_mxnet_allgather_async(NDArray* tensor, NDArray* output,
-                                             char* name);
-extern "C" int horovod_mxnet_broadcast_async(NDArray* tensor, NDArray* output,
-                                             int root_rank, char* name);
-extern "C" int horovod_mxnet_poll(int handle);
-extern "C" void horovod_mxnet_wait_and_clear(int handle);
+typedef ::mxnet::Engine Engine;
+typedef ::mxnet::NDArray NDArray;
+typedef ::mxnet::Engine::CallbackOnComplete Callback;
+
+class HandleManager {
+public:
+  int AllocateHandle(Callback cb);
+  void MarkDone(int handle, const Status& status);
+  void ExecuteCallback(int handle);
+  bool PollHandle(int handle);
+  std::shared_ptr<Status> ReleaseHandle(int handle);
+
+private:
+  std::atomic_int last_handle_;
+  std::unordered_map<int, std::shared_ptr<Status>> results_;
+  std::unordered_map<int, std::shared_ptr<Callback>> callbacks_;
+  std::mutex mutex_;
+};
+
 } // namespace mxnet
 } // namespace horovod
 
-#endif // HOROVOD_MXNET_MPI_OPS_H
+#endif // HOROVOD_MXNET_HANDLE_MANAGER_H

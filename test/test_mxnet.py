@@ -23,6 +23,7 @@ import unittest
 import numpy as np
 import horovod.mxnet as hvd
 from mxnet.test_utils import same
+from mxnet.base import MXNetError
 
 
 class MXTests(unittest.TestCase):
@@ -157,6 +158,30 @@ class MXTests(unittest.TestCase):
             assert max_difference <= threshold, 'hvd.allreduce produces \
                                                  incorrect results for self'
         mx.ndarray.waitall()
+
+    def test_horovod_allreduce_type_error(self):
+        """Test that the allreduce raises an error if different ranks try to
+        send tensors of different type."""
+        hvd.init()
+        rank = hvd.rank()
+        size = hvd.size()
+
+        # This test does not apply if there is only one worker.
+        if size == 1:
+            return
+
+        ctx = self._current_context()
+        tensor = mx.nd.array([17] * 3, ctx=ctx)
+        if rank % 2 == 0:
+            tensor = tensor.astype('int32') 
+        else:
+            tensor = tensor.astype('float32')
+
+        try:
+            summed = hvd.allreduce(tensor)
+            assert False, 'hvd.allreduce did not throw error'
+        except (MXNetError, RuntimeError):
+            pass
 
     def test_horovod_broadcast(self):
         """Test that the broadcast correctly broadcasts 1D, 2D, 3D tensors."""
@@ -296,6 +321,30 @@ class MXTests(unittest.TestCase):
                 'hvd.broadcast produces incorrect broadcasted tensor'
         mx.ndarray.waitall()
 
+    @unittest.skip('')
+    def test_horovod_broadcast_type_error(self):
+        """Test that the broadcast returns an error if the types being broadcasted
+        differ among the processes"""
+        hvd.init()
+        rank = hvd.rank()
+        size = hvd.size()
+
+        # This test does not apply if there is only one worker.
+        if size == 1:
+            return
+
+        ctx = self._current_context()
+        tensor = mx.nd.array([17]*3, ctx=ctx)
+        if rank % 2 == 0:
+            tensor = tensor.astype('int32')
+        else:
+            tensor = tensor.astype('float32') 
+
+        try:
+            hvd.broadcast(tensor, 0)
+            assert False, 'hvd.broadcast did not throw error'
+        except RuntimeError:
+            pass
 
 if __name__ == '__main__':
     unittest.main()
