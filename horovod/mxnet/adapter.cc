@@ -137,6 +137,15 @@ void ThrowIfError(Status status) {
   }
 }
 
+int CheckStatus(const Status &status) {
+  if (status.type() == StatusType::OK) {
+    return 0;
+  }
+
+  std::cerr << "Error: " << status.reason() << std::endl;
+  return -1;
+}
+
 template class MXTensor<NDArray>;
 template class MXTemporaryBuffer<NDArray>;
 template class MXOpContext<NDArray>;

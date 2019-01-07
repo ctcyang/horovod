@@ -42,15 +42,14 @@ std::string GetOpName(std::string prefix, const char* name, int handle) {
 
 } // namespace
 
-int DoAllreduce(NDArray* tensor, NDArray* output, const char* name,
-                Callback cb) {
+void DoAllreduce(NDArray* tensor, NDArray* output, const char* name,
+                 int handle, Callback cb) {
   ThrowIfError(common::CheckInitialized());
-
-  auto handle = handle_manager.AllocateHandle(cb);
   auto device = TensorUtil::GetDevice(tensor);
   auto hvd_tensor = std::make_shared<MXTensor<NDArray>>(tensor);
   auto hvd_context = std::make_shared<MXOpContext<NDArray>>(device, output);
   auto hvd_output = std::make_shared<MXTensor<NDArray>>(output);
+  handle_manager.AttachCallback(handle, cb);
 
   auto enqueue_result =
       EnqueueTensorAllreduce(hvd_context, hvd_tensor, hvd_output, nullptr,
@@ -60,13 +59,11 @@ int DoAllreduce(NDArray* tensor, NDArray* output, const char* name,
                                handle_manager.ExecuteCallback(handle);
                              });
   ThrowIfError(enqueue_result);
-
-  return handle;
 }
 
 #if HAVE_CUDA
-int DoAllreduceCudaOnCPU(NDArray* tensor, NDArray* output, const char* name,
-                         Callback cb) {
+void DoAllreduceCudaOnCPU(NDArray* tensor, NDArray* output, const char* name,
+                         int handle, Callback cb) {
   ThrowIfError(common::CheckInitialized());
   // Make async copy of input tensor to CPU tensor and record completion event.
   auto hvd_cpu_buffer = std::make_shared<MXTemporaryBuffer<NDArray>>(
@@ -76,8 +73,8 @@ int DoAllreduceCudaOnCPU(NDArray* tensor, NDArray* output, const char* name,
 
   auto hvd_context = std::make_shared<MXOpContext<NDArray>>(
       CPU_DEVICE_ID, hvd_cpu_buffer->tensor());
+  handle_manager.AttachCallback(handle, cb);
 
-  auto handle = handle_manager.AllocateHandle(cb);
   auto enqueue_result = EnqueueTensorAllreduce(
       hvd_context, hvd_cpu_buffer, hvd_cpu_buffer, ready_event,
       GetOpName("allreduce", name, handle), CPU_DEVICE_ID,
@@ -87,19 +84,17 @@ int DoAllreduceCudaOnCPU(NDArray* tensor, NDArray* output, const char* name,
         handle_manager.ExecuteCallback(handle);
       });
   ThrowIfError(enqueue_result);
-
-  return handle;
 }
 #endif
 
-int DoAllgather(NDArray* tensor, NDArray* output, const char* name,
-                Callback cb) {
+void DoAllgather(NDArray* tensor, NDArray* output, const char* name,
+                int handle, Callback cb) {
   ThrowIfError(common::CheckInitialized());
   auto device = TensorUtil::GetDevice(tensor);
   auto hvd_tensor = std::make_shared<MXTensor<NDArray>>(tensor);
   auto hvd_context = std::make_shared<MXOpContext<NDArray>>(device, output);
 
-  auto handle = handle_manager.AllocateHandle(cb);
+  handle_manager.AttachCallback(handle, cb);
   auto enqueue_result =
       EnqueueTensorAllgather(hvd_context, hvd_tensor, nullptr,
                              GetOpName("allgather", name, handle), device,
@@ -108,13 +103,11 @@ int DoAllgather(NDArray* tensor, NDArray* output, const char* name,
                                handle_manager.ExecuteCallback(handle);
                              });
   ThrowIfError(enqueue_result);
-
-  return handle;
 }
 
 #if HAVE_CUDA
-int DoAllgatherCudaOnCPU(NDArray* tensor, NDArray* output, const char* name,
-                         Callback cb) {
+void DoAllgatherCudaOnCPU(NDArray* tensor, NDArray* output, const char* name,
+                          int handle, Callback cb) {
   ThrowIfError(common::CheckInitialized());
 
   // Make async copy of input tensor to CPU tensor and record completion event.
@@ -128,7 +121,7 @@ int DoAllgatherCudaOnCPU(NDArray* tensor, NDArray* output, const char* name,
   auto hvd_context = std::make_shared<MXOpContext<NDArray>>(
       CPU_DEVICE_ID, hvd_cpu_output->tensor());
 
-  auto handle = handle_manager.AllocateHandle(cb);
+  handle_manager.AttachCallback(handle, cb);
   auto enqueue_result = EnqueueTensorAllgather(
       hvd_context, hvd_cpu_tensor, ready_event,
       GetOpName("allgather", name, handle), CPU_DEVICE_ID,
@@ -138,13 +131,11 @@ int DoAllgatherCudaOnCPU(NDArray* tensor, NDArray* output, const char* name,
         handle_manager.ExecuteCallback(handle);
       });
   ThrowIfError(enqueue_result);
-
-  return handle;
 }
 #endif
 
-int DoBroadcast(NDArray* tensor, NDArray* output, int root_rank,
-                const char* name, Callback cb) {
+void DoBroadcast(NDArray* tensor, NDArray* output, int root_rank,
+                const char* name, int handle, Callback cb) {
   ThrowIfError(common::CheckInitialized());
   auto device = TensorUtil::GetDevice(tensor);
   auto hvd_tensor = std::make_shared<MXTensor<NDArray>>(tensor);
@@ -158,7 +149,8 @@ int DoBroadcast(NDArray* tensor, NDArray* output, int root_rank,
     hvd_output = std::make_shared<MXTensor<NDArray>>(output);
   }
 
-  auto handle = handle_manager.AllocateHandle(cb);
+  handle_manager.AttachCallback(handle, cb);
+
   auto enqueue_result = EnqueueTensorBroadcast(
       hvd_context, hvd_tensor, hvd_output, root_rank, nullptr,
       GetOpName("broadcast", name, handle), device,
@@ -167,21 +159,20 @@ int DoBroadcast(NDArray* tensor, NDArray* output, int root_rank,
         handle_manager.ExecuteCallback(handle);
       });
   ThrowIfError(enqueue_result);
-
-  return handle;
 }
 
 #if HAVE_CUDA
-int DoBroadcastCudaOnCPU(
+void DoBroadcastCudaOnCPU(
     std::shared_ptr<MXTemporaryBuffer<NDArray>>& hvd_cpu_buffer, int root_rank,
-    const char* name, Callback cb) {
+    const char* name, int handle, Callback cb) {
   // Make async copy of input tensor to CPU tensor and record completion event.
   auto hvd_context = std::make_shared<MXOpContext<NDArray>>(
       CPU_DEVICE_ID, hvd_cpu_buffer->tensor());
   auto ready_event =
       std::make_shared<MXReadyEvent<NDArray>>(hvd_cpu_buffer->tensor());
 
-  auto handle = handle_manager.AllocateHandle(cb);
+  handle_manager.AttachCallback(handle, cb);
+
   auto enqueue_result = EnqueueTensorBroadcast(
       hvd_context, hvd_cpu_buffer, hvd_cpu_buffer, root_rank, ready_event,
       GetOpName("broadcast", name, handle), CPU_DEVICE_ID,
@@ -197,18 +188,18 @@ int DoBroadcastCudaOnCPU(
 
 extern "C" int horovod_mxnet_allreduce_async(NDArray* input, NDArray* output,
                                              char* name, bool average) {
-
+  auto handle = handle_manager.AllocateHandle();
   auto allreduce_async_fn = [input, output,
-                             name](RunContext rctx,
-                                      Callback cb) mutable {
-    DoAllreduce(input, output, name, cb);
+                             name, handle](RunContext rctx,
+                                           Callback cb) mutable {
+    DoAllreduce(input, output, name, handle, cb);
   };
 #if HAVE_CUDA
-  auto allreduce_async_cpu_fn =
-      [input, output, name](RunContext rctx,
-                            Callback cb) mutable {
-        DoAllreduceCudaOnCPU(input, output, name, cb);
-      };
+  auto allreduce_async_cpu_fn = [input, output,
+                                 name, handle](RunContext rctx,
+                                               Callback cb) mutable {
+    DoAllreduceCudaOnCPU(input, output, name, handle, cb);
+  };
 #endif
 
 #if HAVE_CUDA && !HOROVOD_GPU_ALLREDUCE
@@ -240,23 +231,24 @@ extern "C" int horovod_mxnet_allreduce_async(NDArray* input, NDArray* output,
   if (average) {
     *output /= horovod_size();
   }
-  return 0;
+  return handle;
 }
 
 extern "C" int horovod_mxnet_allgather_async(NDArray* input, NDArray* output,
                                              char* name) {
 
+  auto handle = handle_manager.AllocateHandle();
   auto allgather_async_fn = [input, output,
-                             name](RunContext rctx,
-                                   Callback cb) mutable {
-    DoAllgather(input, output, name, cb);
+                             name, handle](RunContext rctx,
+                                           Callback cb) mutable {
+    DoAllgather(input, output, name, handle, cb);
   };
 #if HAVE_CUDA
   auto allgather_async_cpu_fn =
-      [input, output, name](RunContext rctx,
-                            Callback cb) mutable {
-        DoAllgatherCudaOnCPU(input, output, name, cb);
-      };
+      [input, output, name, handle](RunContext rctx,
+                                    Callback cb) mutable {
+    DoAllgatherCudaOnCPU(input, output, name, handle, cb);
+  };
 #endif
 
 #if HAVE_CUDA && HOROVOD_GPU_ALLGATHER != 'M'
@@ -283,16 +275,16 @@ extern "C" int horovod_mxnet_allgather_async(NDArray* input, NDArray* output,
                              "HorovodAllgather");
   }
 #endif
-  return 0;
+  return handle;
 }
 
 extern "C" int horovod_mxnet_broadcast_async(NDArray* input, NDArray* output,
                                              int root_rank, char* name) {
-
+  auto handle = handle_manager.AllocateHandle();
   auto broadcast_async_fn = [input, output, name,
-                             root_rank](RunContext rctx,
-                                        Callback cb) mutable {
-    DoBroadcast(input, output, root_rank, name, cb);
+                             root_rank, handle](RunContext rctx,
+                                                Callback cb) mutable {
+    DoBroadcast(input, output, root_rank, name, handle, cb);
   };
 
 #if HAVE_CUDA && HOROVOD_GPU_BROADCAST != 'M'
@@ -302,11 +294,10 @@ extern "C" int horovod_mxnet_broadcast_async(NDArray* input, NDArray* output,
   auto hvd_cpu_buffer = std::make_shared<MXTemporaryBuffer<NDArray>>(
       CPU_DEVICE_ID, input->dtype());
   TensorUtil::AsyncCopyCudaToCPU(input, hvd_cpu_buffer->tensor());
-  auto broadcast_async_cpu_fn =
-        [hvd_cpu_buffer, name, root_rank]
-        (RunContext rctx, Callback cb) mutable {
-          DoBroadcastCudaOnCPU(hvd_cpu_buffer, root_rank, name, cb);
-        };
+  auto broadcast_async_cpu_fn = [hvd_cpu_buffer, name, root_rank, handle]
+                                (RunContext rctx, Callback cb) mutable {
+    DoBroadcastCudaOnCPU(hvd_cpu_buffer, root_rank, name, handle, cb);
+  };
 
   Engine::Get()->PushAsync(broadcast_async_cpu_fn, input->ctx(), {},
                            {output->var()}, FnProperty::kNormal, 0,
@@ -318,19 +309,20 @@ extern "C" int horovod_mxnet_broadcast_async(NDArray* input, NDArray* output,
                            {output->var()}, FnProperty::kNormal, 0,
                            "HorovodBroadcast");
 #endif
-  return 0;
+  return handle;
 }
 
 extern "C" int horovod_mxnet_poll(int handle) {
   return handle_manager.PollHandle(handle) ? 1 : 0;
 }
 
-extern "C" void horovod_mxnet_wait_and_clear(int handle) {
+extern "C" int horovod_mxnet_wait_and_clear(int handle) {
   while (!handle_manager.PollHandle(handle)) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
   auto status = handle_manager.ReleaseHandle(handle);
-  ThrowIfError(*status);
+
+  return CheckStatus(*status);
 }
 
 } // namespace mxnet

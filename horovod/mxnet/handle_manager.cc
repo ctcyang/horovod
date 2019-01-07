@@ -20,17 +20,23 @@ namespace mxnet {
 
 typedef ::mxnet::Engine::CallbackOnComplete Callback;
 
-int HandleManager::AllocateHandle(Callback cb) {
+int HandleManager::AllocateHandle() {
   int handle = last_handle_.fetch_add(1) + 1;
   std::lock_guard<std::mutex> guard(mutex_);
   results_[handle] = nullptr;
-  callbacks_[handle] = std::make_shared<Callback>(cb);
   return handle;
 }
 
 void HandleManager::MarkDone(int handle, const Status& status) {
   std::lock_guard<std::mutex> guard(mutex_);
   results_[handle] = std::make_shared<Status>(status);
+}
+
+void HandleManager::AttachCallback(int handle, Callback cb) {
+  std::unique_lock<std::mutex> lock(mutex_);
+  if (callbacks_.find(handle) == callbacks_.end()) {
+    callbacks_[handle] = std::make_shared<Callback>(cb);
+  }
 }
 
 void HandleManager::ExecuteCallback(int handle) {

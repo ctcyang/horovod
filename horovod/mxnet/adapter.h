@@ -69,6 +69,7 @@ private:
 };
 
 void ThrowIfError(Status status);
+int CheckStatus(const Status &status);
 
 } // namespace mxnet
 } // namespace horovod

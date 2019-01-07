@@ -36,7 +36,8 @@ typedef ::mxnet::Engine::CallbackOnComplete Callback;
 
 class HandleManager {
 public:
-  int AllocateHandle(Callback cb);
+  int AllocateHandle();
+  void AttachCallback(int handle, Callback cb);
   void MarkDone(int handle, const Status& status);
   void ExecuteCallback(int handle);
   bool PollHandle(int handle);
