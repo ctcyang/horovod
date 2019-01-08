@@ -317,12 +317,13 @@ extern "C" int horovod_mxnet_poll(int handle) {
 }
 
 extern "C" int horovod_mxnet_wait_and_clear(int handle) {
+  API_BEGIN();
   while (!handle_manager.PollHandle(handle)) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
   auto status = handle_manager.ReleaseHandle(handle);
-
-  return CheckStatus(*status);
+  ThrowIfError(*status);
+  API_END();
 }
 
 } // namespace mxnet

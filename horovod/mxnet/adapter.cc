@@ -125,25 +125,11 @@ template <class T> Framework MXOpContext<T>::framework() const {
 }
 
 void ThrowIfError(Status status) {
-  switch (status.type()) {
-  case StatusType::OK:
+  if (StatusType::OK == status.type()) {
     return;
-  case StatusType::PRECONDITION_ERROR:
-    throw std::logic_error(status.reason());
-  case StatusType::ABORTED:
-    throw std::runtime_error(status.reason());
-  default: // Includes UNKNOWN_ERROR
-    throw std::runtime_error(status.reason());
-  }
-}
-
-int CheckStatus(const Status &status) {
-  if (status.type() == StatusType::OK) {
-    return 0;
   }
 
-  std::cerr << "Error: " << status.reason() << std::endl;
-  return -1;
+  throw dmlc::Error(status.reason());
 }
 
 template class MXTensor<NDArray>;
