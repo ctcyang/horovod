@@ -18,7 +18,7 @@
 
 #include <mxnet/base.h>
 #include <mxnet/c_api.h>
-#include <mxnet/c_api_common.h>
+#include <mxnet/c_api_error.h>
 #include <mxnet/ndarray.h>
 
 namespace horovod {
