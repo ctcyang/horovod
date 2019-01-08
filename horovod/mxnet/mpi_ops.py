@@ -22,8 +22,7 @@ import mxnet as mx
 import ctypes
 import os
 
-from mxnet.base import c_str_array, c_handle_array, c_array, c_array_buf, c_str
-from mxnet.base import check_call, string_types, mx_uint, py_str, string_types
+from mxnet.base import check_call, string_types, c_str
 
 from horovod.common import get_ext_suffix
 from horovod.common import HorovodBasics as _HorovodBasics
@@ -73,15 +72,19 @@ def allreduce(tensor, average=True, name=None):
                          dtype=tensor.dtype)
     c_in = tensor.handle
     c_out = output.handle
-    if isinstance(name, string_types):
-        handle = MPI_MXNET_LIB_CTYPES.horovod_mxnet_allreduce_async(
-            c_in, c_out, c_str(name), ctypes.c_bool(average))
-    else:
-        handle = MPI_MXNET_LIB_CTYPES.horovod_mxnet_allreduce_async(
-            c_in, c_out, name, ctypes.c_bool(average))
+    mx_handle = ctypes.c_int()
 
-    _handle_map[handle] = output
-    return synchronize(handle)
+    if isinstance(name, string_types):
+        check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_allreduce_async(
+            c_in, c_out, c_str(name), ctypes.c_bool(average),
+            ctypes.byref(mx_handle)))
+    else:
+        check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_allreduce_async(
+            c_in, c_out, name, ctypes.c_bool(average),
+            ctypes.byref(mx_handle)))
+
+    _handle_map[mx_handle.value] = output
+    return synchronize(mx_handle.value)
 
 
 def allreduce_(tensor, average=True, name=None):
@@ -106,15 +109,19 @@ def allreduce_(tensor, average=True, name=None):
     """
     c_in = tensor.handle
     c_out = tensor.handle
-    if isinstance(name, string_types):
-        handle = MPI_MXNET_LIB_CTYPES.horovod_mxnet_allreduce_async(
-            c_in, c_out, c_str(name), ctypes.c_bool(average))
-    else:
-        handle = MPI_MXNET_LIB_CTYPES.horovod_mxnet_allreduce_async(
-            c_in, c_out, name, ctypes.c_bool(average))
+    mx_handle = ctypes.c_int()
 
-    _handle_map[handle] = (tensor, tensor)
-    return synchronize(handle)
+    if isinstance(name, string_types):
+        check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_allreduce_async(
+            c_in, c_out, c_str(name), ctypes.c_bool(average),
+            ctypes.byref(mx_handle)))
+    else:
+        check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_allreduce_async(
+            c_in, c_out, name, ctypes.c_bool(average),
+            ctypes.byref(mx_handle)))
+
+    _handle_map[mx_handle.value] = tensor
+    return synchronize(mx_handle.value)
 
 
 def allgather(tensor, name=None):
@@ -145,15 +152,17 @@ def allgather(tensor, name=None):
                          dtype=tensor.dtype)
     c_in = tensor.handle
     c_out = output.handle
-    if isinstance(name, string_types):
-        handle = MPI_MXNET_LIB_CTYPES.horovod_mxnet_allgather_async(
-            c_in, c_out, c_str(name))
-    else:
-        handle = MPI_MXNET_LIB_CTYPES.horovod_mxnet_allgather_async(
-            c_in, c_out, name)
+    mx_handle = ctypes.c_int()
 
-    _handle_map[handle] = output
-    return synchronize(handle)
+    if isinstance(name, string_types):
+        check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_allgather_async(
+            c_in, c_out, c_str(name), ctypes.byref(mx_handle)))
+    else:
+        check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_allgather_async(
+            c_in, c_out, name, ctypes.byref(mx_handle)))
+
+    _handle_map[mx_handle.value] = output
+    return synchronize(mx_handle.value)
 
 
 def broadcast(tensor, root_rank, name=None):
@@ -183,15 +192,19 @@ def broadcast(tensor, root_rank, name=None):
                          dtype=tensor.dtype)
     c_in = tensor.handle
     c_out = output.handle
-    if isinstance(name, string_types):
-        handle = MPI_MXNET_LIB_CTYPES.horovod_mxnet_broadcast_async(
-            c_in, c_out, ctypes.c_int(root_rank), c_str(name))
-    else:
-        handle = MPI_MXNET_LIB_CTYPES.horovod_mxnet_broadcast_async(
-            c_in, c_out, ctypes.c_int(root_rank), name)
+    mx_handle = ctypes.c_int()
 
-    _handle_map[handle] = output
-    return synchronize(handle)
+    if isinstance(name, string_types):
+        check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_broadcast_async(
+            c_in, c_out, ctypes.c_int(root_rank), c_str(name),
+            ctypes.byref(mx_handle)))
+    else:
+        check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_broadcast_async(
+            c_in, c_out, ctypes.c_int(root_rank), name,
+            ctypes.byref(mx_handle)))
+
+    _handle_map[mx_handle.value] = output
+    return synchronize(mx_handle.value)
 
 
 def broadcast_(tensor, root_rank, name=None):
@@ -215,15 +228,19 @@ def broadcast_(tensor, root_rank, name=None):
     """
     c_in = tensor.handle
     c_out = tensor.handle
-    if isinstance(name, string_types):
-        handle = MPI_MXNET_LIB_CTYPES.horovod_mxnet_broadcast_async(
-            c_in, c_out, ctypes.c_int(root_rank), c_str(name))
-    else:
-        handle = MPI_MXNET_LIB_CTYPES.horovod_mxnet_broadcast_async(
-            c_in, c_out, ctypes.c_int(root_rank), name)
+    mx_handle = ctypes.c_int()
 
-    _handle_map[handle] = tensor
-    return synchronize(handle)
+    if isinstance(name, string_types):
+        check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_broadcast_async(
+            c_in, c_out, ctypes.c_int(root_rank), c_str(name),
+            ctypes.byref(mx_handle)))
+    else:
+        check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_broadcast_async(
+            c_in, c_out, ctypes.c_int(root_rank), name,
+            ctypes.byref(mx_handle)))
+
+    _handle_map[mx_handle.value] = tensor
+    return synchronize(mx_handle.value)
 
 
 def poll(handle):

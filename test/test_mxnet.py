@@ -179,7 +179,6 @@ class MXTests(unittest.TestCase):
             hvd.allreduce(tensor)
             assert False, 'hvd.allreduce did not throw error'
         except (MXNetError, RuntimeError) as e:
-            print(e)
             pass
 
         # Same number of elements, different rank
@@ -217,7 +216,6 @@ class MXTests(unittest.TestCase):
             summed = hvd.allreduce(tensor)
             assert False, 'hvd.allreduce did not throw error'
         except (MXNetError, RuntimeError) as e:
-            print(e)
             pass
 
     def test_horovod_broadcast(self):
@@ -377,7 +375,6 @@ class MXTests(unittest.TestCase):
             hvd.broadcast(tensor, 0)
             assert False, 'hvd.broadcast did not throw error'
         except (MXNetError, RuntimeError) as e:
-            print(e)
             pass
 
     def test_horovod_broadcast_type_error(self):
@@ -403,7 +400,6 @@ class MXTests(unittest.TestCase):
             hvd.broadcast(tensor, 0)
             assert False, 'hvd.broadcast did not throw error'
         except (MXNetError, RuntimeError) as e:
-            print(e)
             pass
 
 if __name__ == '__main__':

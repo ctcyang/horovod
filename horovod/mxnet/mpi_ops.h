@@ -27,11 +27,14 @@ namespace mxnet {
 using namespace horovod::common;
 
 extern "C" int horovod_mxnet_allreduce_async(NDArray* tensor, NDArray* output,
-                                             char* name, bool average);
+                                             const char* name, bool average,
+                                             int* handle);
 extern "C" int horovod_mxnet_allgather_async(NDArray* tensor, NDArray* output,
-                                             char* name);
+                                             const char* name,
+                                             int* handle);
 extern "C" int horovod_mxnet_broadcast_async(NDArray* tensor, NDArray* output,
-                                             int root_rank, char* name);
+                                             int root_rank, const char* name,
+                                             int* handle);
 extern "C" int horovod_mxnet_poll(int handle);
 extern "C" int horovod_mxnet_wait_and_clear(int handle);
 } // namespace mxnet

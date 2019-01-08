@@ -33,7 +33,7 @@ void HandleManager::MarkDone(int handle, const Status& status) {
 }
 
 void HandleManager::AttachCallback(int handle, Callback cb) {
-  std::unique_lock<std::mutex> lock(mutex_);
+  std::lock_guard<std::mutex> guard(mutex_);
   if (callbacks_.find(handle) == callbacks_.end()) {
     callbacks_[handle] = std::make_shared<Callback>(cb);
   }
