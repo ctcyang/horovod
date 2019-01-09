@@ -179,8 +179,6 @@ void DoBroadcastCudaOnCPU(
         handle_manager.MarkDone(handle, status);
       });
   ThrowIfError(enqueue_result);
-
-  return handle;
 }
 #endif
 
