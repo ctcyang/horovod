@@ -175,7 +175,7 @@ void DoBroadcastCudaOnCPU(
       hvd_context, hvd_cpu_buffer, hvd_cpu_buffer, root_rank, ready_event,
       GetOpName("broadcast", name, handle), CPU_DEVICE_ID,
       [handle](const Status& status) {
-        hdnale_manager.ExecuteCallback(handle);
+        handle_manager.ExecuteCallback(handle);
         handle_manager.MarkDone(handle, status);
       });
   ThrowIfError(enqueue_result);
