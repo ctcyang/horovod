@@ -295,7 +295,7 @@ extern "C" int horovod_mxnet_broadcast_async(NDArray* input, NDArray* output,
   auto hvd_cpu_buffer = std::make_shared<MXTemporaryBuffer<NDArray>>(
       CPU_DEVICE_ID, input->dtype());
   TensorUtil::AsyncCopyCudaToCPU(input, hvd_cpu_buffer->tensor());
-  auto broadcast_async_cpu_fn = [hvd_cpu_buffer, name, root_rank, *handle]
+  auto broadcast_async_cpu_fn = [hvd_cpu_buffer, name, root_rank, handle]
                                 (RunContext rctx, Callback cb) mutable {
     DoBroadcastCudaOnCPU(hvd_cpu_buffer, root_rank, name, *handle, cb);
   };
