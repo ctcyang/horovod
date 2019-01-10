@@ -83,7 +83,7 @@ def check_mx_version():
 
 def get_cpp_flags(build_ext):
     last_err = None
-    default_flags = ['-std=c++11', '-fPIC', '-O2', '-Wall']
+    default_flags = ['-g', '-std=c++11', '-fPIC', '-O2', '-Wall']
     avx_flags = ['-mf16c', '-mavx']
     if sys.platform == 'darwin':
         # Darwin most likely will have Clang, which has libc++.
@@ -276,7 +276,7 @@ def get_mx_flags(build_ext, cpp_flags):
     mx_lib_dirs = get_mx_lib_dirs()
     mx_libs = get_mx_libs(build_ext, mx_lib_dirs, cpp_flags)
 
-    compile_flags = []
+    compile_flags = ['-g']
     for include_dir in mx_include_dirs:
         compile_flags.append('-I%s' % include_dir)
 

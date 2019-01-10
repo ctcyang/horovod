@@ -22,8 +22,7 @@ import mxnet as mx
 import ctypes
 import os
 
-from mxnet.base import c_str_array, c_handle_array, c_array, c_array_buf, c_str
-from mxnet.base import check_call, string_types, mx_uint, py_str, string_types
+from mxnet.base import check_call, string_types, c_str
 
 from horovod.common import get_ext_suffix
 from horovod.common import HorovodBasics as _HorovodBasics
@@ -71,12 +70,14 @@ def allreduce(tensor, average=True, name=None):
                          dtype=tensor.dtype)
     c_in = tensor.handle
     c_out = output.handle
+
     if isinstance(name, string_types):
-        check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_allreduce_async(c_in,
-                   c_out, c_str(name), ctypes.c_bool(average)))
+        check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_allreduce_async(
+            c_in, c_out, c_str(name), ctypes.c_bool(average)))
     else:
-        check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_allreduce_async(c_in,
-                   c_out, name, ctypes.c_bool(average)))
+        check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_allreduce_async(
+            c_in, c_out, name, ctypes.c_bool(average)))
+
     return output
 
 
@@ -102,12 +103,14 @@ def allreduce_(tensor, average=True, name=None):
     """
     c_in = tensor.handle
     c_out = tensor.handle
+
     if isinstance(name, string_types):
-        check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_allreduce_async(c_in,
-                   c_out, c_str(name), ctypes.c_bool(average)))
+        check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_allreduce_async(
+            c_in, c_out, c_str(name), ctypes.c_bool(average)))
     else:
-        check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_allreduce_async(c_in,
-                   c_out, name, ctypes.c_bool(average)))
+        check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_allreduce_async(
+            c_in, c_out, name, ctypes.c_bool(average)))
+
     return tensor
 
 
@@ -139,12 +142,14 @@ def allgather(tensor, name=None):
                          dtype=tensor.dtype)
     c_in = tensor.handle
     c_out = output.handle
+
     if isinstance(name, string_types):
-        check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_allgather_async(c_in,
-                   c_out, c_str(name)))
+        check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_allgather_async(
+            c_in, c_out, c_str(name)))
     else:
-        check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_allgather_async(c_in,
-                   c_out, name))
+        check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_allgather_async(
+            c_in, c_out, name))
+
     return output
 
 
@@ -175,12 +180,14 @@ def broadcast(tensor, root_rank, name=None):
                          dtype=tensor.dtype)
     c_in = tensor.handle
     c_out = output.handle
+
     if isinstance(name, string_types):
-        check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_broadcast_async(c_in,
-                   c_out, ctypes.c_int(root_rank), c_str(name)))
+        check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_broadcast_async(
+            c_in, c_out, ctypes.c_int(root_rank), c_str(name)))
     else:
-        check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_broadcast_async(c_in,
-                   c_out, ctypes.c_int(root_rank), name))
+        check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_broadcast_async(
+            c_in, c_out, ctypes.c_int(root_rank), name))
+
     return output
 
 
@@ -205,10 +212,12 @@ def broadcast_(tensor, root_rank, name=None):
     """
     c_in = tensor.handle
     c_out = tensor.handle
+
     if isinstance(name, string_types):
-        check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_broadcast_async(c_in,
-                   c_out, ctypes.c_int(root_rank), c_str(name)))
+        check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_broadcast_async(
+            c_in, c_out, ctypes.c_int(root_rank), c_str(name)))
     else:
-        check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_broadcast_async(c_in,
-                   c_out, ctypes.c_int(root_rank), name))
+        check_call(MPI_MXNET_LIB_CTYPES.horovod_mxnet_broadcast_async(
+            c_in, c_out, ctypes.c_int(root_rank), name))
+
     return tensor

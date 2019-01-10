@@ -17,6 +17,7 @@
 #include <memory>
 #include <thread>
 #include <atomic>
+#include <future>
 
 #include "../common/operations.h"
 #include "adapter.h"
@@ -31,6 +32,12 @@ namespace mxnet {
 namespace {
 
 std::atomic_int op_count;
+
+int ConvertStatus(const Status& status) {
+  if (StatusType::OK == status.type())
+    return 0;
+  return -1;
+}
 
 std::string GetOpName(std::string prefix, char* name) {
   if (name != nullptr) {
@@ -51,12 +58,23 @@ void DoAllreduce(NDArray* tensor, NDArray* output, const std::string& name,
   auto hvd_context = std::make_shared<MXOpContext<NDArray>>(device, output);
   auto hvd_output = std::make_shared<MXTensor<NDArray>>(output);
 
+  std::promise<int> ret_status; 
   auto enqueue_result =
       EnqueueTensorAllreduce(hvd_context, hvd_tensor, hvd_output, nullptr,
                              name, device,
-                             [cb](const Status& status) {
+                             [cb, &ret_status](const Status& status) {
+                               ret_status.set_value(ConvertStatus(status));
+                               LOG(ERROR) << status.reason();
+                               //CHECK(0) << "test callback";
                                cb();
                              });
+  std::future<int> fut = ret_status.get_future();
+  int foo = fut.get();
+  LOG(INFO) << "ret status is " << foo;
+  //if (foo == -1) {
+  throw dmlc::Error("foo is -1");
+  //}
+
   ThrowIfError(enqueue_result);
 }
 
@@ -174,6 +192,8 @@ void DoBroadcastCudaOnCPU(
 extern "C" int horovod_mxnet_allreduce_async(NDArray* input, NDArray* output,
                                              char* name, bool average) {
 
+  //MX_API_BEGIN();
+  try {
   std::string op_name = GetOpName("allreduce", name);
   auto allreduce_async_fn = [input, output,
                              op_name](RunContext rctx,
@@ -217,12 +237,16 @@ extern "C" int horovod_mxnet_allreduce_async(NDArray* input, NDArray* output,
   if (average) {
     *output /= horovod_size();
   }
-  return 0;
+  } catch(dmlc::Error &e) {
+    return MXAPIHandleException(e);
+  }
+  //MX_API_END();
 }
 
 extern "C" int horovod_mxnet_allgather_async(NDArray* input, NDArray* output,
                                              char* name) {
 
+  MX_API_BEGIN();
   std::string op_name = GetOpName("allgather", name);
   auto allgather_async_fn = [input, output,
                              op_name](RunContext rctx,
@@ -261,12 +285,12 @@ extern "C" int horovod_mxnet_allgather_async(NDArray* input, NDArray* output,
                              "HorovodAllgather");
   }
 #endif
-  return 0;
+  MX_API_END();
 }
 
 extern "C" int horovod_mxnet_broadcast_async(NDArray* input, NDArray* output,
                                              int root_rank, char* name) {
-
+  MX_API_BEGIN();
   std::string op_name = GetOpName("broadcast", name);
   auto broadcast_async_fn = [input, output, op_name,
                              root_rank](RunContext rctx,
@@ -297,7 +321,7 @@ extern "C" int horovod_mxnet_broadcast_async(NDArray* input, NDArray* output,
                            {output->var()}, FnProperty::kNormal, 0,
                            "HorovodBroadcast");
 #endif
-  return 0;
+  MX_API_END();
 }
 
 } // namespace mxnet
