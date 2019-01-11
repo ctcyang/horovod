@@ -17,6 +17,7 @@
 #include <memory>
 #include <thread>
 #include <atomic>
+#include <future>
 
 #include "../common/operations.h"
 #include "adapter.h"
@@ -43,6 +44,7 @@ std::string GetOpName(std::string prefix, char* name) {
 } // namespace
 
 void DoAllreduce(NDArray* tensor, NDArray* output, const std::string& name,
+                 std::promise<Status> &res,
                  Callback cb) {
   ThrowIfError(common::CheckInitialized());
 
@@ -54,7 +56,8 @@ void DoAllreduce(NDArray* tensor, NDArray* output, const std::string& name,
   auto enqueue_result =
       EnqueueTensorAllreduce(hvd_context, hvd_tensor, hvd_output, nullptr,
                              name, device,
-                             [cb](const Status& status) {
+                             [&res, cb](const Status& status) {
+                               res.set_value(status);
                                cb();
                              });
   ThrowIfError(enqueue_result);
@@ -62,6 +65,7 @@ void DoAllreduce(NDArray* tensor, NDArray* output, const std::string& name,
 
 #if HAVE_CUDA
 void DoAllreduceCudaOnCPU(NDArray* tensor, NDArray* output, std::string& name,
+                          std::promise<Status> &res,
                           Callback cb) {
   ThrowIfError(common::CheckInitialized());
   // Make async copy of input tensor to CPU tensor and record completion event.
@@ -76,8 +80,9 @@ void DoAllreduceCudaOnCPU(NDArray* tensor, NDArray* output, std::string& name,
   auto enqueue_result = EnqueueTensorAllreduce(
       hvd_context, hvd_cpu_buffer, hvd_cpu_buffer, ready_event,
       name, CPU_DEVICE_ID,
-      [hvd_cpu_buffer, output, cb](const Status& status) {
+      [hvd_cpu_buffer, output, &res, cb](const Status& status) {
         TensorUtil::CopyCPUToCuda(hvd_cpu_buffer->tensor(), output);
+        res.set_value(status);
         cb();
       });
   ThrowIfError(enqueue_result);
@@ -85,6 +90,7 @@ void DoAllreduceCudaOnCPU(NDArray* tensor, NDArray* output, std::string& name,
 #endif
 
 void DoAllgather(NDArray* tensor, NDArray* output, std::string& name,
+                 std::promise<Status> &res,
                  Callback cb) {
   ThrowIfError(common::CheckInitialized());
   auto device = TensorUtil::GetDevice(tensor);
@@ -94,7 +100,8 @@ void DoAllgather(NDArray* tensor, NDArray* output, std::string& name,
   auto enqueue_result =
       EnqueueTensorAllgather(hvd_context, hvd_tensor, nullptr,
                              name, device,
-                             [cb](const Status& status) {
+                             [&res, cb](const Status& status) {
+                               res.set_value(status);
                                cb();
                              });
   ThrowIfError(enqueue_result);
@@ -102,6 +109,7 @@ void DoAllgather(NDArray* tensor, NDArray* output, std::string& name,
 
 #if HAVE_CUDA
 void DoAllgatherCudaOnCPU(NDArray* tensor, NDArray* output, std::string& name,
+                          std::promise<Status> &res,
                           Callback cb) {
   ThrowIfError(common::CheckInitialized());
 
@@ -119,8 +127,9 @@ void DoAllgatherCudaOnCPU(NDArray* tensor, NDArray* output, std::string& name,
   auto enqueue_result = EnqueueTensorAllgather(
       hvd_context, hvd_cpu_tensor, ready_event,
       name, CPU_DEVICE_ID,
-      [hvd_cpu_output, output, cb](const Status& status) {
+      [hvd_cpu_output, output, &res, cb](const Status& status) {
         TensorUtil::CopyCPUToCuda(hvd_cpu_output->tensor(), output);
+        res.set_value(status);
         cb();
       });
   ThrowIfError(enqueue_result);
@@ -128,7 +137,9 @@ void DoAllgatherCudaOnCPU(NDArray* tensor, NDArray* output, std::string& name,
 #endif
 
 void DoBroadcast(NDArray* tensor, NDArray* output, int root_rank,
-                 std::string& name, Callback cb) {
+                 std::string& name,
+                 std::promise<Status> &res,
+                 Callback cb) {
   ThrowIfError(common::CheckInitialized());
   auto device = TensorUtil::GetDevice(tensor);
   auto hvd_tensor = std::make_shared<MXTensor<NDArray>>(tensor);
@@ -145,7 +156,8 @@ void DoBroadcast(NDArray* tensor, NDArray* output, int root_rank,
   auto enqueue_result = EnqueueTensorBroadcast(
       hvd_context, hvd_tensor, hvd_output, root_rank, nullptr,
       name, device,
-      [cb](const Status& status) {
+      [&res, cb](const Status& status) {
+        res.set_value(status);
         cb();
       });
   ThrowIfError(enqueue_result);
@@ -154,7 +166,9 @@ void DoBroadcast(NDArray* tensor, NDArray* output, int root_rank,
 #if HAVE_CUDA
 void DoBroadcastCudaOnCPU(
     std::shared_ptr<MXTemporaryBuffer<NDArray>>& hvd_cpu_buffer, int root_rank,
-    std::string& name, Callback cb) {
+    std::string& name,
+    std::promise<Status> &res,
+    Callback cb) {
   // Make async copy of input tensor to CPU tensor and record completion event.
   auto hvd_context = std::make_shared<MXOpContext<NDArray>>(
       CPU_DEVICE_ID, hvd_cpu_buffer->tensor());
@@ -164,7 +178,8 @@ void DoBroadcastCudaOnCPU(
   auto enqueue_result = EnqueueTensorBroadcast(
       hvd_context, hvd_cpu_buffer, hvd_cpu_buffer, root_rank, ready_event,
       name, CPU_DEVICE_ID,
-      [cb](const Status& status) {
+      [&res, cb](const Status& status) {
+        res.set_value(status);
         cb();
       });
   ThrowIfError(enqueue_result);
@@ -174,18 +189,19 @@ void DoBroadcastCudaOnCPU(
 extern "C" int horovod_mxnet_allreduce_async(NDArray* input, NDArray* output,
                                              char* name, bool average) {
 
+  MX_API_BEGIN();
+  std::promise<Status> response;
+
   std::string op_name = GetOpName("allreduce", name);
-  auto allreduce_async_fn = [input, output,
-                             op_name](RunContext rctx,
-                                      Callback cb) mutable {
-    DoAllreduce(input, output, op_name, cb);
+  auto allreduce_async_fn = [input, output, op_name, &response]
+                            (RunContext rctx, Callback cb) mutable {
+    DoAllreduce(input, output, op_name, response, cb);
   };
 #if HAVE_CUDA
-  auto allreduce_async_cpu_fn =
-      [input, output, op_name](RunContext rctx,
-                               Callback cb) mutable {
-        DoAllreduceCudaOnCPU(input, output, op_name, cb);
-      };
+  auto allreduce_async_cpu_fn = [input, output, op_name, &response]
+                                (RunContext rctx, Callback cb) mutable {
+    DoAllreduceCudaOnCPU(input, output, op_name, response, cb);
+  };
 #endif
 
 #if HAVE_CUDA && !HOROVOD_GPU_ALLREDUCE
@@ -214,27 +230,30 @@ extern "C" int horovod_mxnet_allreduce_async(NDArray* input, NDArray* output,
   }
 #endif
 
+  Status res = response.get_future().get();
+  ThrowIfError(res);
+
   if (average) {
     *output /= horovod_size();
   }
-  return 0;
+  MX_API_END();
 }
 
 extern "C" int horovod_mxnet_allgather_async(NDArray* input, NDArray* output,
                                              char* name) {
+  MX_API_BEGIN();
 
+  std::promise<Status> response;
   std::string op_name = GetOpName("allgather", name);
-  auto allgather_async_fn = [input, output,
-                             op_name](RunContext rctx,
-                                      Callback cb) mutable {
-    DoAllgather(input, output, op_name, cb);
+  auto allgather_async_fn = [input, output, op_name, &response]
+                            (RunContext rctx, Callback cb) mutable {
+    DoAllgather(input, output, op_name, response, cb);
   };
 #if HAVE_CUDA
-  auto allgather_async_cpu_fn =
-      [input, output, op_name](RunContext rctx,
-                               Callback cb) mutable {
-        DoAllgatherCudaOnCPU(input, output, op_name, cb);
-      };
+  auto allgather_async_cpu_fn = [input, output, op_name, &response]
+                                (RunContext rctx, Callback cb) mutable {
+    DoAllgatherCudaOnCPU(input, output, op_name, response, cb);
+  };
 #endif
 
 #if HAVE_CUDA && HOROVOD_GPU_ALLGATHER != 'M'
@@ -261,17 +280,20 @@ extern "C" int horovod_mxnet_allgather_async(NDArray* input, NDArray* output,
                              "HorovodAllgather");
   }
 #endif
-  return 0;
+
+  Status res = response.get_future().get();
+  ThrowIfError(res);
+  MX_API_END();
 }
 
 extern "C" int horovod_mxnet_broadcast_async(NDArray* input, NDArray* output,
                                              int root_rank, char* name) {
-
+  MX_API_BEGIN();
+  std::promise<Status> response;
   std::string op_name = GetOpName("broadcast", name);
-  auto broadcast_async_fn = [input, output, op_name,
-                             root_rank](RunContext rctx,
-                                        Callback cb) mutable {
-    DoBroadcast(input, output, root_rank, op_name, cb);
+  auto broadcast_async_fn = [input, output, op_name, root_rank, &response]
+                            (RunContext rctx, Callback cb) mutable {
+    DoBroadcast(input, output, root_rank, op_name, response, cb);
   };
 
 #if HAVE_CUDA && HOROVOD_GPU_BROADCAST != 'M'
@@ -281,11 +303,10 @@ extern "C" int horovod_mxnet_broadcast_async(NDArray* input, NDArray* output,
   auto hvd_cpu_buffer = std::make_shared<MXTemporaryBuffer<NDArray>>(
       CPU_DEVICE_ID, input->dtype());
   TensorUtil::AsyncCopyCudaToCPU(input, hvd_cpu_buffer->tensor());
-  auto broadcast_async_cpu_fn =
-        [hvd_cpu_buffer, op_name, root_rank]
-        (RunContext rctx, Callback cb) mutable {
-          DoBroadcastCudaOnCPU(hvd_cpu_buffer, root_rank, op_name, cb);
-        };
+  auto broadcast_async_cpu_fn = [hvd_cpu_buffer, op_name, root_rank, &response]
+                                (RunContext rctx, Callback cb) mutable {
+    DoBroadcastCudaOnCPU(hvd_cpu_buffer, root_rank, op_name, response, cb);
+  };
 
   Engine::Get()->PushAsync(broadcast_async_cpu_fn, input->ctx(), {},
                            {output->var()}, FnProperty::kNormal, 0,
@@ -297,7 +318,10 @@ extern "C" int horovod_mxnet_broadcast_async(NDArray* input, NDArray* output,
                            {output->var()}, FnProperty::kNormal, 0,
                            "HorovodBroadcast");
 #endif
-  return 0;
+
+  Status res = response.get_future().get();
+  ThrowIfError(res);
+  MX_API_END();
 }
 
 } // namespace mxnet
