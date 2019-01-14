@@ -26,13 +26,16 @@ from mxnet.test_utils import same
 from mxnet.base import MXNetError
 
 
+has_gpu = mx.context.num_gpus() > 0
+
+
 class MXTests(unittest.TestCase):
     """
     Tests for ops in horovod.mxnet.
     """
 
     def _current_context(self):
-        if mx.current_context().device_type == 'gpu':
+        if has_gpu:
             return mx.gpu(hvd.local_rank())
         else:
             return mx.current_context()
